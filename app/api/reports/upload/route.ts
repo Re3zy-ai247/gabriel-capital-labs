@@ -215,6 +215,14 @@ export async function POST(req: Request) {
             controller.close();
             return;
           }
+          if (!extraction.ok && extraction.reason === "unreadable") {
+            emit({
+              error:
+                "We couldn't read this PDF because its document structure isn't compatible with our PDF reader. Your file may still open normally in other apps. Please try another copy of the PDF or paste the report text.",
+            });
+            controller.close();
+            return;
+          }
           const pdfText = extraction.ok ? extraction.text : "";
           if (pdfText.length > rawText.length) rawText = pdfText;
           if (rawText.length < 40) {

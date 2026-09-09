@@ -29,6 +29,8 @@ const REQUIRED = [
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",
   "upload-bounds.runtime.test.ts",
+  "pdf-byte-boundary.runtime.test.ts",
+  "pdf-upload-errors.runtime.test.ts",
   "consumer-assertion.runtime.test.ts",
   "terms-acceptance.runtime.test.ts",
   "letter-control.runtime.test.ts",
