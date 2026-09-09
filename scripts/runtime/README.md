@@ -113,6 +113,21 @@ working copy of `app/api/stripe/webhook/route.ts` and reverted immediately after
 | Drop the `claim === "completed"` duplicate short-circuit | 39 passed, **5 failed** (exit 1) |
 | _(unmodified)_ | **44 passed, 0 failed** (exit 0) |
 
+P2C4 PDF guards use the unchanged, entirely synthetic four-page fixture in
+`scripts/fixtures/creditvector-p2c1-synthetic-report.pdf` (SHA-256
+`10202b1de7ba49f0914f171938bad26c7660c3fbd2cdcd9cbe63e9c2b355d9df`).
+The byte-boundary guard exercises the real legacy parser and mocks its boundary
+for ownership/deadline checks; the upload guard mocks all external I/O.
+Node 24.19.0 results, with each removed behavior supplied from a scratch source
+copy only inside its test process:
+
+| Guard / break | Result |
+| --- | --- |
+| `pdf-byte-boundary.runtime.test.ts`, unchanged | **33 passed, 0 failed** (exit 0) |
+| Replace the owned byte copy with the incoming Buffer | 3 passed, **2 failed** (exit 1; bad-XRef failure) |
+| `pdf-upload-errors.runtime.test.ts`, unchanged | **23 passed, 0 failed** (exit 0) |
+| Remove the unreadable-PDF error branch | 17 passed, **6 failed** (exit 1) |
+
 Each guard also carries **control** assertions (a recognized price really did
 provision; a pending row really is deletable; the handler really did run) so that a "nothing happened" pass cannot
 be mistaken for a proof.

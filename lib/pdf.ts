@@ -116,7 +116,10 @@ export async function extractPdfTextBounded(buffer: Buffer): Promise<PdfExtracti
     const timeout = new Promise<"timeout">((resolve) => {
       timer = setTimeout(() => resolve("timeout"), deadlineMs);
     });
-    const parsed = await Promise.race([pdf(buffer, { max: maxPages, pagerender }), timeout]);
+    // Legacy PDF.js can lose a pooled Buffer's byteOffset when cloning it.
+    // Copy only the visible bytes into owned, zero-offset plain byte storage.
+    const parserBytes = Uint8Array.from(buffer);
+    const parsed = await Promise.race([pdf(parserBytes, { max: maxPages, pagerender }), timeout]);
     if (parsed === "timeout") return { ok: false, reason: "timeout", text: "" };
 
     const data = parsed as any;
